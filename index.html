@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Wordly Dual Conversation POC</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    /* Browser Warning Banner */
+    .browser-warning {
+      background-color: #fef3c7;
+      color: #92400e;
+      padding: 12px 20px;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 500;
+      border-bottom: 2px solid #f59e0b;
+      display: none;
+      position: relative;
+    }
+
+    .browser-warning.show {
+      display: block;
+    }
+
+    .browser-warning-close {
+      position: absolute;
+      right: 20px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: #92400e;
+      cursor: pointer;
+      padding: 0;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .browser-warning-close:hover {
+      opacity: 0.7;
+    }
+
+    /* Login Page Styles */
+    #login-page {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .login-card {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      width: 100%;
+      max-width: 500px;
+      padding: 40px;
+    }
+
+    .login-header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .login-header h1 {
+      font-size: 32px;
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .login-header p {
+      color: #666;
+      font-size: 16px;
+    }
+
+    .form-group {
+      margin-bottom: 25px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 8px;
+      font-size: 16px;
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 14px 16px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 18px;
+      transition: all 0.3s;
+      min-height: 48px;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+
+    .form-group input[type="text"]#session-id {
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-weight: 600;
+    }
+
+    .status-message {
+      margin-top: 8px;
+      font-size: 14px;
+      color: #666;
+      text-align: center;
+      min-height: 20px;
+    }
+
+    .status-message.error {
+      color: #ef4444;
+      font-weight: 600;
+    }
+
+    .connect-btn {
+      width: 100%;
+      padding: 16px;
+      min-height: 56px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 20px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 10px;
+    }
+
+    .connect-btn:hover,
+    .connect-btn:focus {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+      outline: none;
+    }
+
+    .connect-btn:focus-visible {
+      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.5);
+    }
+
+    .connect-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    /* Conversation Page Styles */
+    #conversation-page {
+      display: none;
+      height: 100vh;
+      flex-direction: column;
+      background-color: #1f2937;
+      overflow: hidden;
+    }
+
+    #conversation-page.active {
+      display: flex;
+    }
+
+    .conversation-header {
+      background-color: #111827;
+      color: white;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .session-id-display {
+      font-weight: 600;
+      font-size: 18px;
+    }
+
+    .audio-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .audio-indicator {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: #ef4444;
+    }
+
+    .audio-indicator.active {
+      background-color: #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .end-btn {
+      padding: 12px 24px;
+      min-height: 48px;
+      background-color: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .end-btn:hover,
+    .end-btn:focus {
+      background-color: #dc2626;
+      outline: none;
+    }
+
+    .end-btn:focus-visible {
+      box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.4);
+    }
+
+    .iframe-container {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .iframe-wrapper {
+      flex: 1;
+      position: relative;
+      background-color: #000;
+    }
+
+    .iframe-wrapper iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+
+    .iframe-wrapper.top iframe {
+      transform: rotate(180deg);
+    }
+
+    .iframe-wrapper.bottom {
+      border-top: 4px solid #111827;
+    }
+
+    /* Hidden class */
+    .hidden {
+      display: none !important;
+    }
+
+    /* Mobile optimizations */
+    @media screen and (max-width: 768px) {
+      .login-card {
+        padding: 30px 20px;
+      }
+
+      .login-header h1 {
+        font-size: 28px;
+      }
+
+      .conversation-header {
+        padding: 12px 16px;
+      }
+
+      .session-id-display {
+        font-size: 16px;
+      }
+
+      .end-btn {
+        padding: 10px 16px;
+        font-size: 14px;
+      }
+    }
+
+    @media screen and (max-width: 1024px) and (orientation: landscape) {
+      .conversation-header {
+        padding: 10px 16px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+
+    @media (prefers-contrast: high) {
+      .form-group input,
+      .form-group select {
+        border-width: 3px;
+      }
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Browser Warning Banner -->
+  <div class="browser-warning" id="browser-warning" role="alert" aria-live="polite">
+    <span>⚠️ This application is optimized for Chrome or Edge browsers for the best experience.</span>
+    <button class="browser-warning-close" id="dismiss-warning" aria-label="Dismiss warning">×</button>
+  </div>
+
+  <!-- Login Page -->
+  <div id="login-page">
+    <div class="login-card">
+      <div class="login-header">
+        <h1>Wordly Dual Conversation</h1>
+        <p>Face-to-face translation</p>
+      </div>
+
+      <form id="login-form">
+        <!-- Session ID -->
+        <div class="form-group">
+          <label for="session-id">Session ID</label>
+          <input 
+            type="text" 
+            id="session-id" 
+            placeholder="ABCD-1234"
+            maxlength="9"
+            aria-required="true"
+            aria-describedby="session-id-help"
+            required
+          >
+          <span id="session-id-help" class="sr-only">Enter session ID in format: 4 letters followed by 4 numbers</span>
+        </div>
+
+        <!-- Passcode -->
+        <div class="form-group">
+          <label for="passcode">Passcode</label>
+          <input 
+            type="text" 
+            id="passcode" 
+            placeholder="Enter passcode"
+            aria-required="true"
+            required
+          >
+        </div>
+
+        <!-- Microphone -->
+        <div class="form-group">
+          <label for="device-select">Microphone</label>
+          <select id="device-select" aria-label="Select microphone for audio input">
+            <option value="">Loading devices...</option>
+          </select>
+        </div>
+
+        <!-- Font Size -->
+        <div class="form-group">
+          <label for="font-size">Text Size</label>
+          <select id="font-size" aria-label="Select text size for conversation display">
+            <option value="20px">Small (20px)</option>
+            <option value="24px">Medium (24px)</option>
+            <option value="32px" selected>Large (32px) - Recommended</option>
+            <option value="40px">Extra Large (40px)</option>
+            <option value="48px">Maximum (48px)</option>
+          </select>
+        </div>
+
+        <!-- Audio Test -->
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="margin-bottom: 0;">Audio Test</label>
+            <button type="button" id="test-audio-btn" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600;">Test Audio</button>
+          </div>
+          <div style="height: 32px; background-color: #e5e7eb; border-radius: 8px; overflow: hidden;">
+            <div id="test-audio-level" style="height: 100%; background: linear-gradient(90deg, #10b981 0%, #059669 100%); transition: width 0.1s ease; width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="status-message" id="status-message" role="status" aria-live="polite"></div>
+
+        <!-- Debug log (visible on screen for iPad debugging) -->
+        <div style="margin-top: 10px; padding: 10px; background: #f3f4f6; border-radius: 6px; font-size: 12px; max-height: 100px; overflow-y: auto; font-family: monospace;" id="debug-log"></div>
+
+        <!-- Connect Button -->
+        <button type="submit" class="connect-btn" id="connect-btn">
+          Start Conversation
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Conversation Page -->
+  <div id="conversation-page" role="main">
+    <header class="conversation-header">
+      <div class="header-left">
+        <span class="session-id-display" id="session-display" aria-live="polite">Session: </span>
+        <div class="audio-status">
+          <span class="audio-indicator" id="audio-indicator"></span>
+          <span id="audio-status-text">Audio: Disconnected</span>
+        </div>
+      </div>
+
+      <button class="end-btn" id="end-btn" aria-label="End session and return to login">
+        <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
+        </svg>
+        End Session
+      </button>
+    </header>
+
+    <div class="iframe-container">
+      <div class="iframe-wrapper top">
+        <iframe id="iframe-top" allow="microphone" title="Person 1 view - English translation" aria-label="Top translation display showing English"></iframe>
+      </div>
+      <div class="iframe-wrapper bottom">
+        <iframe id="iframe-bottom" allow="microphone" title="Person 2 view - Spanish translation (rotated 180 degrees)" aria-label="Bottom translation display showing Spanish, rotated for person across table"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ============================================
+    // PROCESS 1: IFRAME DISPLAY MANAGER
+    // ============================================
+    const DisplayManager = {
+      state: {
+        sessionId: '',
+        passcode: '',
+        fontSize: '32px'
+      },
+
+      elements: {
+        loginPage: document.getElementById('login-page'),
+        conversationPage: document.getElementById('conversation-page'),
+        sessionIdInput: document.getElementById('session-id'),
+        passcodeInput: document.getElementById('passcode'),
+        fontSizeSelect: document.getElementById('font-size'),
+        statusMessage: document.getElementById('status-message'),
+        loginForm: document.getElementById('login-form'),
+        sessionDisplay: document.getElementById('session-display'),
+        endBtn: document.getElementById('end-btn'),
+        iframeTop: document.getElementById('iframe-top'),
+        iframeBottom: document.getElementById('iframe-bottom'),
+        browserWarning: document.getElementById('browser-warning'),
+        dismissWarningBtn: document.getElementById('dismiss-warning'),
+        testAudioBtn: document.getElementById('test-audio-btn'),
+        testAudioLevel: document.getElementById('test-audio-level'),
+        debugLog: document.getElementById('debug-log')
+      },
+
+      testAudioStream: null,
+      testAudioContext: null,
+      testAudioAnalyser: null,
+      isTesting: false,
+
+      init() {
+        this.setupEventListeners();
+        this.checkBrowser();
+        this.hideAddressBarOnMobile();
+        this.debugLog('DisplayManager initialized');
+      },
+
+      setupEventListeners() {
+        this.elements.dismissWarningBtn.addEventListener('click', () => {
+          this.elements.browserWarning.classList.remove('show');
+        });
+
+        this.elements.sessionIdInput.addEventListener('input', (e) => {
+          const input = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (input.length <= 8) {
+            e.target.value = input.length <= 4 ? input : `${input.slice(0, 4)}-${input.slice(4)}`;
+          }
+        });
+
+        this.elements.fontSizeSelect.addEventListener('change', (e) => {
+          this.state.fontSize = e.target.value;
+        });
+
+        this.elements.testAudioBtn.addEventListener('click', () => {
+          if (this.isTesting) {
+            this.stopAudioTest();
+          } else {
+            this.startAudioTest();
+          }
+        });
+
+        this.elements.loginForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          this.stopAudioTest(); // Stop test before starting conversation
+          this.startConversation();
+        });
+
+        this.elements.endBtn.addEventListener('click', () => {
+          this.endConversation();
+        });
+
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && this.elements.conversationPage.classList.contains('active')) {
+            this.endConversation();
+          }
+        });
+      },
+
+      checkBrowser() {
+        const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+        const isEdge = /Edg/.test(navigator.userAgent);
+        if (!isChrome && !isEdge) {
+          this.elements.browserWarning.classList.add('show');
+        }
+      },
+
+      hideAddressBarOnMobile() {
+        if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+          window.addEventListener('load', () => {
+            setTimeout(() => window.scrollTo(0, 1), 100);
+          });
+        }
+      },
+
+      startConversation() {
+        this.debugLog('Start button clicked');
+        
+        const sessionId = this.elements.sessionIdInput.value.trim();
+        const passcode = this.elements.passcodeInput.value.trim();
+
+        this.debugLog(`Session: ${sessionId}, Passcode: ${passcode ? 'provided' : 'missing'}`);
+
+        if (!sessionId || !passcode) {
+          this.debugLog('ERROR: Missing credentials');
+          this.showStatus('Please enter Session ID and Passcode', true);
+          return;
+        }
+
+        if (!/^[A-Z0-9]{4}-[0-9]{4}$/.test(sessionId)) {
+          this.debugLog('ERROR: Invalid session ID format');
+          this.showStatus('Invalid Session ID format (should be ABCD-1234)', true);
+          return;
+        }
+
+        this.state.sessionId = sessionId;
+        this.state.passcode = passcode;
+
+        this.showStatus('Connecting...');
+        this.debugLog('Validation passed');
+        
+        try {
+          this.debugLog('Calling showConversationScreen()');
+          this.showConversationScreen();
+          this.debugLog('Screen shown, starting audio');
+          AudioSender.start(sessionId, passcode);
+          this.debugLog('Audio sender started');
+        } catch (error) {
+          this.debugLog('ERROR: ' + error.message);
+          console.error('[DisplayManager] Error in startConversation:', error);
+          this.showStatus('Error starting conversation: ' + error.message, true);
+        }
+      },
+
+      showConversationScreen() {
+        this.elements.loginPage.classList.add('hidden');
+        this.elements.conversationPage.classList.add('active');
+        this.elements.sessionDisplay.textContent = `Session: ${this.state.sessionId}`;
+
+        const iframeUrlTop = `https://dev-attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=en&fgsize=${this.state.fontSize}`;
+        const iframeUrlBottom = `https://dev-attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=es-MX&fgsize=${this.state.fontSize}`;
+
+        this.elements.iframeTop.src = iframeUrlTop;
+        this.elements.iframeBottom.src = iframeUrlBottom;
+
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(err => {
+            console.log('Screen orientation lock not supported:', err);
+          });
+        }
+
+        setTimeout(() => {
+          this.elements.sessionDisplay.setAttribute('aria-live', 'assertive');
+          this.elements.sessionDisplay.textContent = `Connected to session ${this.state.sessionId}`;
+          setTimeout(() => {
+            this.elements.sessionDisplay.setAttribute('aria-live', 'polite');
+          }, 1000);
+        }, 500);
+      },
+
+      endConversation() {
+        // Stop audio sender with end session flag (Process 2)
+        AudioSender.stop(true);
+
+        if (screen.orientation && screen.orientation.unlock) {
+          screen.orientation.unlock();
+        }
+
+        this.elements.iframeTop.src = '';
+        this.elements.iframeBottom.src = '';
+
+        this.state.sessionId = '';
+        this.state.passcode = '';
+
+        this.elements.conversationPage.classList.remove('active');
+        this.elements.loginPage.classList.remove('hidden');
+
+        this.showStatus('');
+        this.elements.sessionIdInput.focus();
+      },
+
+      showStatus(message, isError = false) {
+        this.elements.statusMessage.textContent = message;
+        this.elements.statusMessage.className = isError ? 'status-message error' : 'status-message';
+      },
+
+      async startAudioTest() {
+        try {
+          this.isTesting = true;
+          this.elements.testAudioBtn.textContent = 'Stop Test';
+          this.elements.testAudioBtn.style.backgroundColor = '#ef4444';
+
+          const deviceId = AudioSender.elements.deviceSelect.value;
+          const constraints = {
+            audio: {
+              deviceId: deviceId ? { exact: deviceId } : undefined,
+              echoCancellation: true,
+              noiseSuppression: false,
+              autoGainControl: false,
+              sampleRate: 16000,
+              channelCount: 1
+            }
+          };
+
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          this.testAudioStream = stream;
+
+          const audioContext = new AudioContext({ sampleRate: 16000 });
+          this.testAudioContext = audioContext;
+
+          const source = audioContext.createMediaStreamSource(stream);
+          const analyser = audioContext.createAnalyser();
+          analyser.fftSize = 512;
+          analyser.smoothingTimeConstant = 0.3;
+          this.testAudioAnalyser = analyser;
+
+          source.connect(analyser);
+
+          const monitorLevel = () => {
+            if (!this.testAudioAnalyser) return;
+
+            const dataArray = new Uint8Array(this.testAudioAnalyser.frequencyBinCount);
+            this.testAudioAnalyser.getByteFrequencyData(dataArray);
+            const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+            const normalizedLevel = Math.min(1, (average / 255) * 2.5);
+
+            this.elements.testAudioLevel.style.width = `${normalizedLevel * 100}%`;
+
+            if (this.isTesting) {
+              requestAnimationFrame(monitorLevel);
+            }
+          };
+
+          monitorLevel();
+        } catch (error) {
+          console.error('Audio test error:', error);
+          this.showStatus('Error accessing microphone', true);
+          this.stopAudioTest();
+        }
+      },
+
+      stopAudioTest() {
+        this.isTesting = false;
+        this.elements.testAudioBtn.textContent = 'Test Audio';
+        this.elements.testAudioBtn.style.backgroundColor = '#667eea';
+
+        if (this.testAudioStream) {
+          this.testAudioStream.getTracks().forEach(track => track.stop());
+          this.testAudioStream = null;
+        }
+
+        if (this.testAudioContext) {
+          this.testAudioContext.close();
+          this.testAudioContext = null;
+        }
+
+        this.testAudioAnalyser = null;
+        this.elements.testAudioLevel.style.width = '0%';
+      },
+
+      debugLog(message) {
+        const timestamp = new Date().toLocaleTimeString();
+        const entry = `[${timestamp}] ${message}`;
+        console.log(entry);
+        
+        if (this.elements.debugLog) {
+          const div = document.createElement('div');
+          div.textContent = entry;
+          this.elements.debugLog.appendChild(div);
+          this.elements.debugLog.scrollTop = this.elements.debugLog.scrollHeight;
+        }
+      }
+    };
+
+    // ============================================
+    // PROCESS 2: AUDIO SENDER (ISOLATED)
+    // ============================================
+    const AudioSender = {
+      state: {
+        sessionId: '',
+        passcode: '',
+        deviceId: '',
+        websocket: null,
+        mediaStream: null,
+        audioContext: null,
+        audioProcessor: null,
+        analyser: null,
+        isConnected: false,
+        audioStarted: false,
+        startRequestSent: false
+      },
+
+      elements: {
+        deviceSelect: document.getElementById('device-select'),
+        audioIndicator: document.getElementById('audio-indicator'),
+        audioStatusText: document.getElementById('audio-status-text')
+      },
+
+      init() {
+        this.getAudioDevices();
+      },
+
+      async getAudioDevices() {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          stream.getTracks().forEach(track => track.stop());
+
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const audioInputs = devices.filter(device => device.kind === 'audioinput');
+
+          this.elements.deviceSelect.innerHTML = '';
+          audioInputs.forEach(device => {
+            const option = document.createElement('option');
+            option.value = device.deviceId;
+            option.textContent = device.label || `Microphone ${device.deviceId.slice(0, 8)}`;
+            this.elements.deviceSelect.appendChild(option);
+          });
+
+          if (audioInputs.length > 0) {
+            this.state.deviceId = audioInputs[0].deviceId;
+          }
+        } catch (error) {
+          console.error('Error loading audio devices:', error);
+        }
+      },
+
+      start(sessionId, passcode) {
+        this.state.sessionId = sessionId;
+        this.state.passcode = passcode;
+        this.state.deviceId = this.elements.deviceSelect.value;
+
+        this.updateAudioStatus('Connecting...');
+        this.connectWebSocket();
+      },
+
+      connectWebSocket() {
+        try {
+          const ws = new WebSocket('wss://dev-endpoint.wordly.ai/present');
+          this.state.websocket = ws;
+
+          ws.onopen = () => {
+            console.log('[AudioSender] WebSocket connected');
+
+            const connectRequest = {
+              type: 'connect',
+              presentationCode: this.state.sessionId,
+              accessKey: this.state.passcode,
+              languageCode: 'en',
+              speakerId: `dual-convo-${Date.now()}`,
+              name: 'Dual Conversation User',
+              connectionCode: '9005'
+            };
+
+            ws.send(JSON.stringify(connectRequest));
+          };
+
+          ws.onmessage = async (event) => {
+            const message = JSON.parse(event.data);
+
+            if (message.type === 'status') {
+              if (message.success) {
+                if (!this.state.isConnected) {
+                  this.state.isConnected = true;
+                  this.updateAudioStatus('Connected');
+                }
+
+                if (!this.state.startRequestSent) {
+                  this.state.startRequestSent = true;
+                  const startRequest = {
+                    type: 'start',
+                    languageCode: 'en',
+                    sampleRate: 16000
+                  };
+                  ws.send(JSON.stringify(startRequest));
+                  console.log('[AudioSender] Start request sent');
+                }
+
+                if (!this.state.audioStarted) {
+                  this.state.audioStarted = true;
+                  await this.startAudioCapture();
+                }
+              } else {
+                console.error('[AudioSender] Connection failed:', message.message);
+                this.updateAudioStatus('Error');
+              }
+            }
+          };
+
+          ws.onerror = (error) => {
+            console.error('[AudioSender] WebSocket error:', error);
+            this.updateAudioStatus('Error');
+          };
+
+          ws.onclose = () => {
+            console.log('[AudioSender] WebSocket closed');
+            this.state.isConnected = false;
+            this.updateAudioStatus('Disconnected');
+            this.stopAudioCapture();
+          };
+
+        } catch (error) {
+          console.error('[AudioSender] Error:', error);
+          this.updateAudioStatus('Error');
+        }
+      },
+
+      async startAudioCapture() {
+        try {
+          console.log('[AudioSender] Starting audio capture');
+
+          const constraints = {
+            audio: {
+              deviceId: this.state.deviceId ? { exact: this.state.deviceId } : undefined,
+              echoCancellation: true,
+              noiseSuppression: false,
+              autoGainControl: false,
+              sampleRate: 16000,
+              channelCount: 1
+            }
+          };
+
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          this.state.mediaStream = stream;
+
+          const audioContext = new AudioContext({ sampleRate: 16000 });
+          this.state.audioContext = audioContext;
+
+          const source = audioContext.createMediaStreamSource(stream);
+          const analyser = audioContext.createAnalyser();
+          analyser.fftSize = 512;
+          analyser.smoothingTimeConstant = 0.3;
+          this.state.analyser = analyser;
+
+          const gainNode = audioContext.createGain();
+          gainNode.gain.value = 1.5;
+
+          const processor = audioContext.createScriptProcessor(2048, 1, 1);
+          this.state.audioProcessor = processor;
+
+          source.connect(gainNode);
+          gainNode.connect(analyser);
+          analyser.connect(processor);
+          processor.connect(audioContext.destination);
+
+          let outputBuffer = new Float32Array(1600);
+          let outputBufferIndex = 0;
+
+          processor.onaudioprocess = (e) => {
+            if (this.state.websocket?.readyState === WebSocket.OPEN) {
+              const inputBuffer = e.inputBuffer;
+              const inputData = inputBuffer.getChannelData(0);
+
+              for (let i = 0; i < inputData.length; i++) {
+                if (outputBufferIndex < outputBuffer.length) {
+                  outputBuffer[outputBufferIndex++] = inputData[i];
+
+                  if (outputBufferIndex >= outputBuffer.length) {
+                    const int16Array = new Int16Array(outputBuffer.length);
+                    for (let j = 0; j < outputBuffer.length; j++) {
+                      const s = Math.max(-1, Math.min(1, outputBuffer[j] * 1.5));
+                      int16Array[j] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                    }
+
+                    this.state.websocket.send(int16Array.buffer);
+                    outputBufferIndex = 0;
+                  }
+                }
+              }
+            }
+          };
+
+          this.updateAudioStatus('Streaming');
+          console.log('[AudioSender] Audio capture started');
+        } catch (error) {
+          console.error('[AudioSender] Audio capture error:', error);
+          this.updateAudioStatus('Error');
+        }
+      },
+
+      stopAudioCapture() {
+        if (this.state.mediaStream) {
+          this.state.mediaStream.getTracks().forEach(track => track.stop());
+          this.state.mediaStream = null;
+        }
+
+        if (this.state.audioProcessor) {
+          this.state.audioProcessor.disconnect();
+          this.state.audioProcessor = null;
+        }
+
+        if (this.state.analyser) {
+          this.state.analyser.disconnect();
+          this.state.analyser = null;
+        }
+
+        if (this.state.audioContext) {
+          this.state.audioContext.close();
+          this.state.audioContext = null;
+        }
+
+        console.log('[AudioSender] Audio capture stopped');
+      },
+
+      stop(endSession = true) {
+        console.log('[AudioSender] Stopping');
+
+        if (this.state.websocket?.readyState === WebSocket.OPEN) {
+          const disconnectRequest = {
+            type: 'disconnect',
+            end: endSession
+          };
+          this.state.websocket.send(JSON.stringify(disconnectRequest));
+          this.state.websocket.close();
+        }
+
+        this.stopAudioCapture();
+        this.state.websocket = null;
+        this.state.audioStarted = false;
+        this.state.startRequestSent = false;
+        this.state.isConnected = false;
+        this.updateAudioStatus('Disconnected');
+      },
+
+      updateAudioStatus(status) {
+        this.elements.audioStatusText.textContent = `Audio: ${status}`;
+        
+        if (status === 'Streaming') {
+          this.elements.audioIndicator.classList.add('active');
+        } else {
+          this.elements.audioIndicator.classList.remove('active');
+        }
+      }
+    };
+
+    // ============================================
+    // INITIALIZE BOTH PROCESSES
+    // ============================================
+    DisplayManager.init();
+    AudioSender.init();
+  </script>
+
+</body>
+</html>
