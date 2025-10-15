@@ -427,9 +427,6 @@
 
         <div class="status-message" id="status-message" role="status" aria-live="polite"></div>
 
-        <!-- Debug log (visible on screen for iPad debugging) -->
-        <div style="margin-top: 10px; padding: 10px; background: #f3f4f6; border-radius: 6px; font-size: 12px; max-height: 100px; overflow-y: auto; font-family: monospace;" id="debug-log"></div>
-
         <!-- Connect Button -->
         <button type="submit" class="connect-btn" id="connect-btn">
           Start Conversation
@@ -475,7 +472,8 @@
       state: {
         sessionId: '',
         passcode: '',
-        fontSize: '32px'
+        fontSize: '32px',
+        iframesLoaded: { top: false, bottom: false }
       },
 
       elements: {
@@ -493,8 +491,7 @@
         browserWarning: document.getElementById('browser-warning'),
         dismissWarningBtn: document.getElementById('dismiss-warning'),
         testAudioBtn: document.getElementById('test-audio-btn'),
-        testAudioLevel: document.getElementById('test-audio-level'),
-        debugLog: document.getElementById('debug-log')
+        testAudioLevel: document.getElementById('test-audio-level')
       },
 
       testAudioStream: null,
@@ -506,7 +503,6 @@
         this.setupEventListeners();
         this.checkBrowser();
         this.hideAddressBarOnMobile();
-        this.debugLog('DisplayManager initialized');
       },
 
       setupEventListeners() {
@@ -548,6 +544,17 @@
             this.endConversation();
           }
         });
+
+        // Listen for iframe load events to detect issues
+        this.elements.iframeTop.addEventListener('load', () => {
+          this.state.iframesLoaded.top = true;
+          console.log('[DisplayManager] Top iframe loaded');
+        });
+
+        this.elements.iframeBottom.addEventListener('load', () => {
+          this.state.iframesLoaded.bottom = true;
+          console.log('[DisplayManager] Bottom iframe loaded');
+        });
       },
 
       checkBrowser() {
@@ -567,21 +574,15 @@
       },
 
       startConversation() {
-        this.debugLog('Start button clicked');
-        
         const sessionId = this.elements.sessionIdInput.value.trim();
         const passcode = this.elements.passcodeInput.value.trim();
 
-        this.debugLog(`Session: ${sessionId}, Passcode: ${passcode ? 'provided' : 'missing'}`);
-
         if (!sessionId || !passcode) {
-          this.debugLog('ERROR: Missing credentials');
           this.showStatus('Please enter Session ID and Passcode', true);
           return;
         }
 
         if (!/^[A-Z0-9]{4}-[0-9]{4}$/.test(sessionId)) {
-          this.debugLog('ERROR: Invalid session ID format');
           this.showStatus('Invalid Session ID format (should be ABCD-1234)', true);
           return;
         }
@@ -590,16 +591,11 @@
         this.state.passcode = passcode;
 
         this.showStatus('Connecting...');
-        this.debugLog('Validation passed');
         
         try {
-          this.debugLog('Calling showConversationScreen()');
           this.showConversationScreen();
-          this.debugLog('Screen shown, starting audio');
           AudioSender.start(sessionId, passcode);
-          this.debugLog('Audio sender started');
         } catch (error) {
-          this.debugLog('ERROR: ' + error.message);
           console.error('[DisplayManager] Error in startConversation:', error);
           this.showStatus('Error starting conversation: ' + error.message, true);
         }
@@ -613,8 +609,34 @@
         const iframeUrlTop = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=en&fgsize=${this.state.fontSize}`;
         const iframeUrlBottom = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=es-MX&fgsize=${this.state.fontSize}`;
 
-        this.elements.iframeTop.src = iframeUrlTop;
-        this.elements.iframeBottom.src = iframeUrlBottom;
+        // Reset iframe load tracking
+        this.state.iframesLoaded = { top: false, bottom: false };
+
+        // Small delay before setting iframe sources to help with mobile rendering
+        setTimeout(() => {
+          this.elements.iframeTop.src = iframeUrlTop;
+          
+          // Stagger the bottom iframe slightly for mobile browsers
+          setTimeout(() => {
+            this.elements.iframeBottom.src = iframeUrlBottom;
+          }, 100);
+
+          // Check if iframes loaded after a reasonable timeout (mobile safety net)
+          setTimeout(() => {
+            if (!this.state.iframesLoaded.top || !this.state.iframesLoaded.bottom) {
+              console.warn('[DisplayManager] One or more iframes may not have loaded properly');
+              // Force a reload of any iframe that didn't load
+              if (!this.state.iframesLoaded.top) {
+                console.log('[DisplayManager] Reloading top iframe');
+                this.elements.iframeTop.src = iframeUrlTop;
+              }
+              if (!this.state.iframesLoaded.bottom) {
+                console.log('[DisplayManager] Reloading bottom iframe');
+                this.elements.iframeBottom.src = iframeUrlBottom;
+              }
+            }
+          }, 3000);
+        }, 150);
 
         if (screen.orientation && screen.orientation.lock) {
           screen.orientation.lock('landscape').catch(err => {
@@ -644,6 +666,7 @@
 
         this.state.sessionId = '';
         this.state.passcode = '';
+        this.state.iframesLoaded = { top: false, bottom: false };
 
         this.elements.conversationPage.classList.remove('active');
         this.elements.loginPage.classList.remove('hidden');
@@ -729,19 +752,6 @@
 
         this.testAudioAnalyser = null;
         this.elements.testAudioLevel.style.width = '0%';
-      },
-
-      debugLog(message) {
-        const timestamp = new Date().toLocaleTimeString();
-        const entry = `[${timestamp}] ${message}`;
-        console.log(entry);
-        
-        if (this.elements.debugLog) {
-          const div = document.createElement('div');
-          div.textContent = entry;
-          this.elements.debugLog.appendChild(div);
-          this.elements.debugLog.scrollTop = this.elements.debugLog.scrollHeight;
-        }
       }
     };
 
@@ -886,131 +896,3 @@
               deviceId: this.state.deviceId ? { exact: this.state.deviceId } : undefined,
               echoCancellation: true,
               noiseSuppression: false,
-              autoGainControl: false,
-              sampleRate: 16000,
-              channelCount: 1
-            }
-          };
-
-          const stream = await navigator.mediaDevices.getUserMedia(constraints);
-          this.state.mediaStream = stream;
-
-          const audioContext = new AudioContext({ sampleRate: 16000 });
-          this.state.audioContext = audioContext;
-
-          const source = audioContext.createMediaStreamSource(stream);
-          const analyser = audioContext.createAnalyser();
-          analyser.fftSize = 512;
-          analyser.smoothingTimeConstant = 0.3;
-          this.state.analyser = analyser;
-
-          const gainNode = audioContext.createGain();
-          gainNode.gain.value = 1.5;
-
-          const processor = audioContext.createScriptProcessor(2048, 1, 1);
-          this.state.audioProcessor = processor;
-
-          source.connect(gainNode);
-          gainNode.connect(analyser);
-          analyser.connect(processor);
-          processor.connect(audioContext.destination);
-
-          let outputBuffer = new Float32Array(1600);
-          let outputBufferIndex = 0;
-
-          processor.onaudioprocess = (e) => {
-            if (this.state.websocket?.readyState === WebSocket.OPEN) {
-              const inputBuffer = e.inputBuffer;
-              const inputData = inputBuffer.getChannelData(0);
-
-              for (let i = 0; i < inputData.length; i++) {
-                if (outputBufferIndex < outputBuffer.length) {
-                  outputBuffer[outputBufferIndex++] = inputData[i];
-
-                  if (outputBufferIndex >= outputBuffer.length) {
-                    const int16Array = new Int16Array(outputBuffer.length);
-                    for (let j = 0; j < outputBuffer.length; j++) {
-                      const s = Math.max(-1, Math.min(1, outputBuffer[j] * 1.5));
-                      int16Array[j] = s < 0 ? s * 0x8000 : s * 0x7FFF;
-                    }
-
-                    this.state.websocket.send(int16Array.buffer);
-                    outputBufferIndex = 0;
-                  }
-                }
-              }
-            }
-          };
-
-          this.updateAudioStatus('Streaming');
-          console.log('[AudioSender] Audio capture started');
-        } catch (error) {
-          console.error('[AudioSender] Audio capture error:', error);
-          this.updateAudioStatus('Error');
-        }
-      },
-
-      stopAudioCapture() {
-        if (this.state.mediaStream) {
-          this.state.mediaStream.getTracks().forEach(track => track.stop());
-          this.state.mediaStream = null;
-        }
-
-        if (this.state.audioProcessor) {
-          this.state.audioProcessor.disconnect();
-          this.state.audioProcessor = null;
-        }
-
-        if (this.state.analyser) {
-          this.state.analyser.disconnect();
-          this.state.analyser = null;
-        }
-
-        if (this.state.audioContext) {
-          this.state.audioContext.close();
-          this.state.audioContext = null;
-        }
-
-        console.log('[AudioSender] Audio capture stopped');
-      },
-
-      stop(endSession = true) {
-        console.log('[AudioSender] Stopping');
-
-        if (this.state.websocket?.readyState === WebSocket.OPEN) {
-          const disconnectRequest = {
-            type: 'disconnect',
-            end: endSession
-          };
-          this.state.websocket.send(JSON.stringify(disconnectRequest));
-          this.state.websocket.close();
-        }
-
-        this.stopAudioCapture();
-        this.state.websocket = null;
-        this.state.audioStarted = false;
-        this.state.startRequestSent = false;
-        this.state.isConnected = false;
-        this.updateAudioStatus('Disconnected');
-      },
-
-      updateAudioStatus(status) {
-        this.elements.audioStatusText.textContent = `Audio: ${status}`;
-        
-        if (status === 'Streaming') {
-          this.elements.audioIndicator.classList.add('active');
-        } else {
-          this.elements.audioIndicator.classList.remove('active');
-        }
-      }
-    };
-
-    // ============================================
-    // INITIALIZE BOTH PROCESSES
-    // ============================================
-    DisplayManager.init();
-    AudioSender.init();
-  </script>
-
-</body>
-</html>
