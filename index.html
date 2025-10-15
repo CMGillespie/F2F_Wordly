@@ -523,7 +523,10 @@
       </div>
 
       <div class="audio-toggle-container">
-        <span>🔇 Mute Speaker</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" style="margin-right: 4px;">
+          <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
+        </svg>
+        <span>Mute</span>
         <label class="audio-toggle-switch">
           <input type="checkbox" id="iframe-audio-toggle" aria-label="Mute speaker audio in iframes">
           <span class="audio-toggle-slider"></span>
@@ -699,10 +702,10 @@
         this.elements.conversationPage.classList.add('active');
         this.elements.sessionDisplay.textContent = `Session: ${this.state.sessionId}`;
 
-        // Reset state - START WITH AUDIO ENABLED
+        // Reset state - START WITH AUDIO UNMUTED (toggle OFF)
         this.state.iframesLoaded = { top: false, bottom: false };
-        this.state.audioEnabled = true;
-        this.elements.iframeAudioToggle.checked = true;
+        this.state.audioEnabled = false;
+        this.elements.iframeAudioToggle.checked = false;
 
         this.loadIframes();
 
