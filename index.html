@@ -522,14 +522,6 @@
         </div>
       </div>
 
-      <div class="audio-toggle-container">
-        <span>🔊 Speaker</span>
-        <label class="audio-toggle-switch">
-          <input type="checkbox" id="iframe-audio-toggle" aria-label="Enable speaker audio in iframes">
-          <span class="audio-toggle-slider"></span>
-        </label>
-      </div>
-
       <button class="end-btn" id="end-btn" aria-label="End session and return to login">
         <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
@@ -576,8 +568,7 @@
         browserWarning: document.getElementById('browser-warning'),
         dismissWarningBtn: document.getElementById('dismiss-warning'),
         testAudioBtn: document.getElementById('test-audio-btn'),
-        testAudioLevel: document.getElementById('test-audio-level'),
-        iframeAudioToggle: document.getElementById('iframe-audio-toggle')
+        testAudioLevel: document.getElementById('test-audio-level')
       },
 
       testAudioStream: null,
@@ -640,12 +631,6 @@
           this.state.iframesLoaded.bottom = true;
           console.log('[DisplayManager] Bottom iframe loaded');
         });
-
-        this.elements.iframeAudioToggle.addEventListener('change', (e) => {
-          this.state.audioEnabled = e.target.checked;
-          console.log('[DisplayManager] Audio toggle changed:', this.state.audioEnabled);
-          this.loadIframes();
-        });
       },
 
       checkBrowser() {
@@ -698,8 +683,6 @@
         this.elements.sessionDisplay.textContent = `Session: ${this.state.sessionId}`;
 
         this.state.iframesLoaded = { top: false, bottom: false };
-        this.state.audioEnabled = false;
-        this.elements.iframeAudioToggle.checked = false;
 
         this.loadIframes();
 
@@ -719,13 +702,9 @@
       },
 
       loadIframes() {
-        // Only add enableTTS when audio is enabled (toggle is ON)
-        const audioParam = this.state.audioEnabled ? '&enableTTS=true' : '';
-        
-        const iframeUrlTop = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=en&fgsize=${this.state.fontSize}${audioParam}`;
-        const iframeUrlBottom = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=es-MX&fgsize=${this.state.fontSize}${audioParam}`;
-
-        console.log('[DisplayManager] Loading iframes with audio:', this.state.audioEnabled);
+        // Always enable TTS audio in iframes
+        const iframeUrlTop = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=en&fgsize=${this.state.fontSize}&enableTTS=true`;
+        const iframeUrlBottom = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=es-MX&fgsize=${this.state.fontSize}&enableTTS=true`;
 
         setTimeout(() => {
           this.elements.iframeTop.src = iframeUrlTop;
