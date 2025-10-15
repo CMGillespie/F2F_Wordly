@@ -644,7 +644,8 @@
         // Audio toggle event listener
         this.elements.iframeAudioToggle.addEventListener('change', (e) => {
           this.state.audioEnabled = e.target.checked;
-          console.log('[DisplayManager] Audio toggle changed to:', this.state.audioEnabled);
+          console.log('[DisplayManager] Toggle checked:', e.target.checked);
+          console.log('[DisplayManager] Audio enabled:', this.state.audioEnabled);
           this.loadIframes();
         });
       },
