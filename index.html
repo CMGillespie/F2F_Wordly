@@ -204,19 +204,23 @@
     .header-left {
       display: flex;
       align-items: center;
-      gap: 16px;
+      gap: 12px;
+      flex-shrink: 1;
+      min-width: 0;
     }
 
     .session-id-display {
       font-weight: 600;
-      font-size: 18px;
+      font-size: 14px;
+      white-space: nowrap;
     }
 
     .audio-status {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 14px;
+      gap: 6px;
+      font-size: 12px;
+      white-space: nowrap;
     }
 
     .audio-indicator {
@@ -236,20 +240,76 @@
       50% { opacity: 0.5; }
     }
 
+    /* Audio toggle switch */
+    .audio-toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .audio-toggle-switch {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      flex-shrink: 0;
+    }
+
+    .audio-toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .audio-toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #4b5563;
+      transition: 0.3s;
+      border-radius: 24px;
+    }
+
+    .audio-toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+
+    .audio-toggle-switch input:checked + .audio-toggle-slider {
+      background-color: #10b981;
+    }
+
+    .audio-toggle-switch input:checked + .audio-toggle-slider:before {
+      transform: translateX(20px);
+    }
+
     .end-btn {
-      padding: 12px 24px;
-      min-height: 48px;
+      padding: 8px 16px;
+      min-height: 36px;
       background-color: #ef4444;
       color: white;
       border: none;
-      border-radius: 8px;
+      border-radius: 6px;
       font-weight: 600;
-      font-size: 16px;
+      font-size: 14px;
       cursor: pointer;
       transition: all 0.3s;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
 
     .end-btn:hover,
@@ -305,22 +365,37 @@
       }
 
       .conversation-header {
-        padding: 12px 16px;
+        padding: 6px 12px;
+        gap: 8px;
       }
 
       .session-id-display {
-        font-size: 16px;
+        font-size: 12px;
+      }
+
+      .audio-status {
+        font-size: 11px;
+      }
+
+      .audio-toggle-container {
+        font-size: 12px;
       }
 
       .end-btn {
-        padding: 10px 16px;
-        font-size: 14px;
+        padding: 6px 12px;
+        font-size: 13px;
+        min-height: 32px;
+      }
+
+      .end-btn svg {
+        width: 16px;
+        height: 16px;
       }
     }
 
     @media screen and (max-width: 1024px) and (orientation: landscape) {
       .conversation-header {
-        padding: 10px 16px;
+        padding: 6px 12px;
       }
     }
 
@@ -447,6 +522,14 @@
         </div>
       </div>
 
+      <div class="audio-toggle-container">
+        <span>🔊 Speaker</span>
+        <label class="audio-toggle-switch">
+          <input type="checkbox" id="iframe-audio-toggle" aria-label="Enable speaker audio in iframes">
+          <span class="audio-toggle-slider"></span>
+        </label>
+      </div>
+
       <button class="end-btn" id="end-btn" aria-label="End session and return to login">
         <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/>
@@ -474,7 +557,8 @@
         sessionId: '',
         passcode: '',
         fontSize: '32px',
-        iframesLoaded: { top: false, bottom: false }
+        iframesLoaded: { top: false, bottom: false },
+        audioEnabled: false
       },
 
       elements: {
@@ -492,7 +576,8 @@
         browserWarning: document.getElementById('browser-warning'),
         dismissWarningBtn: document.getElementById('dismiss-warning'),
         testAudioBtn: document.getElementById('test-audio-btn'),
-        testAudioLevel: document.getElementById('test-audio-level')
+        testAudioLevel: document.getElementById('test-audio-level'),
+        iframeAudioToggle: document.getElementById('iframe-audio-toggle')
       },
 
       testAudioStream: null,
@@ -532,7 +617,7 @@
 
         this.elements.loginForm.addEventListener('submit', (e) => {
           e.preventDefault();
-          this.stopAudioTest(); // Stop test before starting conversation
+          this.stopAudioTest();
           this.startConversation();
         });
 
@@ -546,7 +631,6 @@
           }
         });
 
-        // Listen for iframe load events to help detect mobile loading issues
         this.elements.iframeTop.addEventListener('load', () => {
           this.state.iframesLoaded.top = true;
           console.log('[DisplayManager] Top iframe loaded');
@@ -555,6 +639,11 @@
         this.elements.iframeBottom.addEventListener('load', () => {
           this.state.iframesLoaded.bottom = true;
           console.log('[DisplayManager] Bottom iframe loaded');
+        });
+
+        this.elements.iframeAudioToggle.addEventListener('change', (e) => {
+          this.state.audioEnabled = e.target.checked;
+          this.updateIframeSources();
         });
       },
 
@@ -607,37 +696,11 @@
         this.elements.conversationPage.classList.add('active');
         this.elements.sessionDisplay.textContent = `Session: ${this.state.sessionId}`;
 
-        const iframeUrlTop = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=en&fgsize=${this.state.fontSize}`;
-        const iframeUrlBottom = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=es-MX&fgsize=${this.state.fontSize}`;
-
-        // Reset iframe load tracking
         this.state.iframesLoaded = { top: false, bottom: false };
+        this.state.audioEnabled = false;
+        this.elements.iframeAudioToggle.checked = false;
 
-        // Small delay before setting iframe sources to help with mobile rendering
-        setTimeout(() => {
-          this.elements.iframeTop.src = iframeUrlTop;
-          
-          // Stagger the bottom iframe slightly for mobile browsers
-          setTimeout(() => {
-            this.elements.iframeBottom.src = iframeUrlBottom;
-          }, 100);
-
-          // Check if iframes loaded after a reasonable timeout (mobile safety net)
-          setTimeout(() => {
-            if (!this.state.iframesLoaded.top || !this.state.iframesLoaded.bottom) {
-              console.warn('[DisplayManager] One or more iframes may not have loaded properly');
-              // Force a reload of any iframe that didn't load
-              if (!this.state.iframesLoaded.top) {
-                console.log('[DisplayManager] Reloading top iframe');
-                this.elements.iframeTop.src = iframeUrlTop;
-              }
-              if (!this.state.iframesLoaded.bottom) {
-                console.log('[DisplayManager] Reloading bottom iframe');
-                this.elements.iframeBottom.src = iframeUrlBottom;
-              }
-            }
-          }, 3000);
-        }, 150);
+        this.updateIframeSources();
 
         if (screen.orientation && screen.orientation.lock) {
           screen.orientation.lock('landscape').catch(err => {
@@ -654,8 +717,36 @@
         }, 500);
       },
 
+      updateIframeSources() {
+        const audioParam = this.state.audioEnabled ? '&enableTTS=true' : '';
+        
+        const iframeUrlTop = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=en&fgsize=${this.state.fontSize}${audioParam}`;
+        const iframeUrlBottom = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=es-MX&fgsize=${this.state.fontSize}${audioParam}`;
+
+        setTimeout(() => {
+          this.elements.iframeTop.src = iframeUrlTop;
+          
+          setTimeout(() => {
+            this.elements.iframeBottom.src = iframeUrlBottom;
+          }, 100);
+
+          setTimeout(() => {
+            if (!this.state.iframesLoaded.top || !this.state.iframesLoaded.bottom) {
+              console.warn('[DisplayManager] One or more iframes may not have loaded properly');
+              if (!this.state.iframesLoaded.top) {
+                console.log('[DisplayManager] Reloading top iframe');
+                this.elements.iframeTop.src = iframeUrlTop;
+              }
+              if (!this.state.iframesLoaded.bottom) {
+                console.log('[DisplayManager] Reloading bottom iframe');
+                this.elements.iframeBottom.src = iframeUrlBottom;
+              }
+            }
+          }, 3000);
+        }, 150);
+      },
+
       endConversation() {
-        // Stop audio sender with end session flag (Process 2)
         AudioSender.stop(true);
 
         if (screen.orientation && screen.orientation.unlock) {
