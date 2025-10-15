@@ -549,8 +549,7 @@
         sessionId: '',
         passcode: '',
         fontSize: '32px',
-        iframesLoaded: { top: false, bottom: false },
-        audioEnabled: false
+        iframesLoaded: { top: false, bottom: false }
       },
 
       elements: {
@@ -568,8 +567,7 @@
         browserWarning: document.getElementById('browser-warning'),
         dismissWarningBtn: document.getElementById('dismiss-warning'),
         testAudioBtn: document.getElementById('test-audio-btn'),
-        testAudioLevel: document.getElementById('test-audio-level'),
-        iframeAudioToggle: document.getElementById('iframe-audio-toggle')
+        testAudioLevel: document.getElementById('test-audio-level')
       },
 
       testAudioStream: null,
@@ -632,14 +630,6 @@
           this.state.iframesLoaded.bottom = true;
           console.log('[DisplayManager] Bottom iframe loaded');
         });
-
-        // Audio toggle event listener
-        this.elements.iframeAudioToggle.addEventListener('change', (e) => {
-          this.state.audioEnabled = e.target.checked;
-          console.log('[DisplayManager] Toggle checked:', e.target.checked);
-          console.log('[DisplayManager] Audio enabled:', this.state.audioEnabled);
-          this.loadIframes();
-        });
       },
 
       checkBrowser() {
@@ -691,34 +681,10 @@
         this.elements.conversationPage.classList.add('active');
         this.elements.sessionDisplay.textContent = `Session: ${this.state.sessionId}`;
 
-        // Reset state - START WITH AUDIO UNMUTED (toggle OFF)
         this.state.iframesLoaded = { top: false, bottom: false };
-        this.state.audioEnabled = false;
-        this.elements.iframeAudioToggle.checked = false;
 
-        this.loadIframes();
-
-        if (screen.orientation && screen.orientation.lock) {
-          screen.orientation.lock('landscape').catch(err => {
-            console.log('Screen orientation lock not supported:', err);
-          });
-        }
-
-        setTimeout(() => {
-          this.elements.sessionDisplay.setAttribute('aria-live', 'assertive');
-          this.elements.sessionDisplay.textContent = `Connected to session ${this.state.sessionId}`;
-          setTimeout(() => {
-            this.elements.sessionDisplay.setAttribute('aria-live', 'polite');
-          }, 1000);
-        }, 500);
-      },
-
-      loadIframes() {
-        // ALWAYS enable TTS controls - users control mute/unmute within iframes
-        const iframeUrlTop = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=es-MX&fgsize=${this.state.fontSize}&enableTTS=true`;
-        const iframeUrlBottom = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=en&fgsize=${this.state.fontSize}&enableTTS=true`;
-
-        console.log('[DisplayManager] Loading iframes with audio controls enabled');
+        const iframeUrlTop = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=es-MX&fgsize=${this.state.fontSize}`;
+        const iframeUrlBottom = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=en&fgsize=${this.state.fontSize}`;
 
         setTimeout(() => {
           this.elements.iframeTop.src = iframeUrlTop;
@@ -741,6 +707,20 @@
             }
           }, 3000);
         }, 150);
+
+        if (screen.orientation && screen.orientation.lock) {
+          screen.orientation.lock('landscape').catch(err => {
+            console.log('Screen orientation lock not supported:', err);
+          });
+        }
+
+        setTimeout(() => {
+          this.elements.sessionDisplay.setAttribute('aria-live', 'assertive');
+          this.elements.sessionDisplay.textContent = `Connected to session ${this.state.sessionId}`;
+          setTimeout(() => {
+            this.elements.sessionDisplay.setAttribute('aria-live', 'polite');
+          }, 1000);
+        }, 500);
       },
 
       endConversation() {
