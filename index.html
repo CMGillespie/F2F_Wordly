@@ -545,7 +545,7 @@
           }
         });
 
-        // Listen for iframe load events to detect issues
+        // Listen for iframe load events to help detect mobile loading issues
         this.elements.iframeTop.addEventListener('load', () => {
           this.state.iframesLoaded.top = true;
           console.log('[DisplayManager] Top iframe loaded');
@@ -896,3 +896,131 @@
               deviceId: this.state.deviceId ? { exact: this.state.deviceId } : undefined,
               echoCancellation: true,
               noiseSuppression: false,
+              autoGainControl: false,
+              sampleRate: 16000,
+              channelCount: 1
+            }
+          };
+
+          const stream = await navigator.mediaDevices.getUserMedia(constraints);
+          this.state.mediaStream = stream;
+
+          const audioContext = new AudioContext({ sampleRate: 16000 });
+          this.state.audioContext = audioContext;
+
+          const source = audioContext.createMediaStreamSource(stream);
+          const analyser = audioContext.createAnalyser();
+          analyser.fftSize = 512;
+          analyser.smoothingTimeConstant = 0.3;
+          this.state.analyser = analyser;
+
+          const gainNode = audioContext.createGain();
+          gainNode.gain.value = 1.5;
+
+          const processor = audioContext.createScriptProcessor(2048, 1, 1);
+          this.state.audioProcessor = processor;
+
+          source.connect(gainNode);
+          gainNode.connect(analyser);
+          analyser.connect(processor);
+          processor.connect(audioContext.destination);
+
+          let outputBuffer = new Float32Array(1600);
+          let outputBufferIndex = 0;
+
+          processor.onaudioprocess = (e) => {
+            if (this.state.websocket?.readyState === WebSocket.OPEN) {
+              const inputBuffer = e.inputBuffer;
+              const inputData = inputBuffer.getChannelData(0);
+
+              for (let i = 0; i < inputData.length; i++) {
+                if (outputBufferIndex < outputBuffer.length) {
+                  outputBuffer[outputBufferIndex++] = inputData[i];
+
+                  if (outputBufferIndex >= outputBuffer.length) {
+                    const int16Array = new Int16Array(outputBuffer.length);
+                    for (let j = 0; j < outputBuffer.length; j++) {
+                      const s = Math.max(-1, Math.min(1, outputBuffer[j] * 1.5));
+                      int16Array[j] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                    }
+
+                    this.state.websocket.send(int16Array.buffer);
+                    outputBufferIndex = 0;
+                  }
+                }
+              }
+            }
+          };
+
+          this.updateAudioStatus('Streaming');
+          console.log('[AudioSender] Audio capture started');
+        } catch (error) {
+          console.error('[AudioSender] Audio capture error:', error);
+          this.updateAudioStatus('Error');
+        }
+      },
+
+      stopAudioCapture() {
+        if (this.state.mediaStream) {
+          this.state.mediaStream.getTracks().forEach(track => track.stop());
+          this.state.mediaStream = null;
+        }
+
+        if (this.state.audioProcessor) {
+          this.state.audioProcessor.disconnect();
+          this.state.audioProcessor = null;
+        }
+
+        if (this.state.analyser) {
+          this.state.analyser.disconnect();
+          this.state.analyser = null;
+        }
+
+        if (this.state.audioContext) {
+          this.state.audioContext.close();
+          this.state.audioContext = null;
+        }
+
+        console.log('[AudioSender] Audio capture stopped');
+      },
+
+      stop(endSession = true) {
+        console.log('[AudioSender] Stopping');
+
+        if (this.state.websocket?.readyState === WebSocket.OPEN) {
+          const disconnectRequest = {
+            type: 'disconnect',
+            end: endSession
+          };
+          this.state.websocket.send(JSON.stringify(disconnectRequest));
+          this.state.websocket.close();
+        }
+
+        this.stopAudioCapture();
+        this.state.websocket = null;
+        this.state.audioStarted = false;
+        this.state.startRequestSent = false;
+        this.state.isConnected = false;
+        this.updateAudioStatus('Disconnected');
+      },
+
+      updateAudioStatus(status) {
+        this.elements.audioStatusText.textContent = `Audio: ${status}`;
+        
+        if (status === 'Streaming') {
+          this.elements.audioIndicator.classList.add('active');
+        } else {
+          this.elements.audioIndicator.classList.remove('active');
+        }
+      }
+    };
+
+    // ============================================
+    // INITIALIZE BOTH PROCESSES
+    // ============================================
+    DisplayManager.init();
+    AudioSender.init();
+  </script>
+
+</body>
+</html>
