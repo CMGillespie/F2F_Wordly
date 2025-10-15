@@ -643,7 +643,8 @@
 
         this.elements.iframeAudioToggle.addEventListener('change', (e) => {
           this.state.audioEnabled = e.target.checked;
-          this.updateIframeSources();
+          console.log('[DisplayManager] Audio toggle changed:', this.state.audioEnabled);
+          this.loadIframes();
         });
       },
 
@@ -700,7 +701,7 @@
         this.state.audioEnabled = false;
         this.elements.iframeAudioToggle.checked = false;
 
-        this.updateIframeSources();
+        this.loadIframes();
 
         if (screen.orientation && screen.orientation.lock) {
           screen.orientation.lock('landscape').catch(err => {
@@ -717,11 +718,14 @@
         }, 500);
       },
 
-      updateIframeSources() {
+      loadIframes() {
+        // Only add enableTTS when audio is enabled (toggle is ON)
         const audioParam = this.state.audioEnabled ? '&enableTTS=true' : '';
         
         const iframeUrlTop = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=en&fgsize=${this.state.fontSize}${audioParam}`;
         const iframeUrlBottom = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=es-MX&fgsize=${this.state.fontSize}${audioParam}`;
+
+        console.log('[DisplayManager] Loading iframes with audio:', this.state.audioEnabled);
 
         setTimeout(() => {
           this.elements.iframeTop.src = iframeUrlTop;
