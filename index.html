@@ -698,10 +698,10 @@
         this.elements.conversationPage.classList.add('active');
         this.elements.sessionDisplay.textContent = `Session: ${this.state.sessionId}`;
 
-        // Reset state
+        // Reset state - START WITH AUDIO ENABLED
         this.state.iframesLoaded = { top: false, bottom: false };
-        this.state.audioEnabled = false;
-        this.elements.iframeAudioToggle.checked = false;
+        this.state.audioEnabled = true;
+        this.elements.iframeAudioToggle.checked = true;
 
         this.loadIframes();
 
