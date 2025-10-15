@@ -722,13 +722,15 @@
       },
 
       loadIframes() {
-        // Only add enableTTS when toggle is ON
-        const audioParam = this.state.audioEnabled ? '&enableTTS=true' : '';
+        // INVERTED: Add enableTTS when audio is DISABLED (to mute it)
+        // When audio is ENABLED, don't add parameter (iframes are unmuted by default)
+        const audioParam = this.state.audioEnabled ? '' : '&enableTTS=true';
         
         const iframeUrlTop = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=en&fgsize=${this.state.fontSize}${audioParam}`;
         const iframeUrlBottom = `https://attend.wordly.ai/frame/${this.state.sessionId}?attendeePasscode=${this.state.passcode}&lang=es-MX&fgsize=${this.state.fontSize}${audioParam}`;
 
         console.log('[DisplayManager] Loading iframes - Audio enabled:', this.state.audioEnabled);
+        console.log('[DisplayManager] enableTTS parameter:', audioParam);
 
         setTimeout(() => {
           this.elements.iframeTop.src = iframeUrlTop;
