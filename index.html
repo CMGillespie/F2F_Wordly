@@ -354,6 +354,18 @@
       border-top: 4px solid #111827;
     }
 
+    /* Version display */
+    .version-display {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.3);
+      font-family: monospace;
+      pointer-events: none;
+      z-index: 10;
+    }
+
     /* Hidden class */
     .hidden {
       display: none !important;
@@ -542,6 +554,7 @@
       <div class="iframe-wrapper bottom">
         <iframe id="iframe-bottom" allow="microphone" title="Person 2 view - English translation (rotated 180 degrees)" aria-label="Bottom translation display showing English, rotated for person across table"></iframe>
       </div>
+      <div class="version-display">v1.0.0</div>
     </div>
   </div>
 
@@ -837,6 +850,23 @@
     // ============================================
     // PROCESS 2: AUDIO SENDER (ISOLATED)
     // ============================================
+    // ⚠️⚠️⚠️ CRITICAL WARNING ⚠️⚠️⚠️
+    // DO NOT MODIFY THIS SECTION UNDER ANY CIRCUMSTANCES
+    // 
+    // This audio pipeline is precisely tuned for Wordly's
+    // transcription service. ANY changes to:
+    // - Sample rates
+    // - Buffer sizes  
+    // - Audio constraints
+    // - WebSocket protocol
+    // - Gain settings
+    // 
+    // ...will cause transcription failures, audio feedback,
+    // connection errors, or complete system failure.
+    //
+    // If you need to modify audio behavior, consult the
+    // original developer or Wordly support first.
+    // ============================================
     const AudioSender = {
       state: {
         sessionId: '',
@@ -967,17 +997,19 @@
       },
 
       async startAudioCapture() {
+        // ⚠️ CRITICAL AUDIO PARAMETERS - DO NOT MODIFY ⚠️
+        // These values are required by Wordly's transcription engine
         try {
           console.log('[AudioSender] Starting audio capture');
 
           const constraints = {
             audio: {
               deviceId: this.state.deviceId ? { exact: this.state.deviceId } : undefined,
-              echoCancellation: true,
-              noiseSuppression: false,
-              autoGainControl: false,
-              sampleRate: 16000,
-              channelCount: 1
+              echoCancellation: true,    // REQUIRED: Prevents feedback
+              noiseSuppression: false,   // REQUIRED: Better speech quality
+              autoGainControl: false,    // REQUIRED: Consistent levels
+              sampleRate: 16000,         // REQUIRED: Wordly expects 16kHz
+              channelCount: 1            // REQUIRED: Mono audio
             }
           };
 
@@ -994,9 +1026,9 @@
           this.state.analyser = analyser;
 
           const gainNode = audioContext.createGain();
-          gainNode.gain.value = 1.5;
+          gainNode.gain.value = 1.5;  // REQUIRED: Amplify microphone input
 
-          const processor = audioContext.createScriptProcessor(2048, 1, 1);
+          const processor = audioContext.createScriptProcessor(2048, 1, 1);  // REQUIRED: 2048 buffer size
           this.state.audioProcessor = processor;
 
           source.connect(gainNode);
@@ -1004,7 +1036,7 @@
           analyser.connect(processor);
           processor.connect(audioContext.destination);
 
-          let outputBuffer = new Float32Array(1600);
+          let outputBuffer = new Float32Array(1600);  // REQUIRED: Wordly packet size
           let outputBufferIndex = 0;
 
           processor.onaudioprocess = (e) => {
